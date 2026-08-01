@@ -205,125 +205,134 @@ const engine = {
     const checks = [];
     let hardFail = false;
     let softFail = false;
+    let hardScore = 50;
+    let softScore = 30;
+    let synergyScore = 10;
 
-    const fail = (text) => {
+    const fail = (text, weight = 10) => {
       hardFail = true;
+      hardScore = Math.max(0, hardScore - weight);
       checks.push({ ok: false, soft: false, text });
     };
     const pass = (text) => checks.push({ ok: true, soft: false, text });
 
-    /* --- Ülke / kayıt yeri --- */
+    /* --- 1. Ülke Uyum Kontrolü --- */
     if (r.countries && r.countries.length) {
       const ok = !p.country || r.countries.includes(p.country);
       ok
-        ? pass("Ülke kapsamda")
-        : fail("Uygun ülkeler: " + r.countries.map((c) => this.labelOf(COUNTRIES, c)).join(", "));
+        ? pass("Ülke lokasyonu uyumlu")
+        : fail("Uygun ülkeler: " + r.countries.map((c) => this.labelOf(COUNTRIES, c)).join(", "), 15);
     }
 
-    /* --- Şirket türü --- */
+    /* --- 2. Şirket Türü Kontrolü --- */
     if (r.companyTypes && r.companyTypes.length) {
       const ok = r.companyTypes.includes(p.companyType);
       ok
-        ? pass("Şirket türü uygun")
-        : fail("Gereken tür: " + r.companyTypes.map((t) => this.labelOf(COMPANY_TYPES, t)).join(" / "));
+        ? pass("Tüzel kişilik/şirket türü uygun")
+        : fail("Gereken tür: " + r.companyTypes.map((t) => this.labelOf(COMPANY_TYPES, t)).join(" / "), 15);
     }
 
-    /* --- Olgunluk aşaması --- */
+    /* --- 3. Gelişim/Olgunluk Aşaması --- */
     if (r.stages && r.stages.length) {
       const ok = !p.stage || r.stages.includes(p.stage);
       ok
-        ? pass("Aşama uygun")
-        : fail("Uygun aşamalar: " + r.stages.map((s) => this.labelOf(STAGES, s)).join(", "));
+        ? pass("Girişim aşaması kapsamda")
+        : fail("Uygun aşamalar: " + r.stages.map((s) => this.labelOf(STAGES, s)).join(", "), 10);
     }
 
-    /* --- Sektör (kesişim yeterli) --- */
+    /* --- 4. Sektörel Uygunluk --- */
     if (r.sectors && r.sectors.length) {
       const mine = p.sectors || [];
       const ok = mine.length === 0 || mine.some((s) => r.sectors.includes(s));
       ok
-        ? pass("Sektör kapsamda")
-        : fail("Kapsamdaki sektörler: " + r.sectors.map((s) => this.labelOf(SECTORS, s)).join(", "));
+        ? pass("Sektör odak alanı eşleşti")
+        : fail("Kapsamdaki sektörler: " + r.sectors.map((s) => this.labelOf(SECTORS, s)).join(", "), 10);
     }
 
-    /* --- Şirket yaşı --- */
+    /* --- 5. Şirket ve Kurucu Yaşı --- */
     if (r.maxCompanyAgeYears !== undefined) {
       const ok = Number(p.companyAge || 0) <= r.maxCompanyAgeYears;
       ok
         ? pass(`Şirket yaşı uygun (≤ ${r.maxCompanyAgeYears} yıl)`)
-        : fail(`Şirket ${r.maxCompanyAgeYears} yıldan yeni olmalı — sizinki ${p.companyAge} yıl`);
+        : fail(`Şirket ${r.maxCompanyAgeYears} yıldan yeni olmalı — sizinki ${p.companyAge} yıl`, 10);
     }
     if (r.minCompanyAgeYears !== undefined) {
       const ok = Number(p.companyAge || 0) >= r.minCompanyAgeYears;
       ok
         ? pass(`Şirket yaşı uygun (≥ ${r.minCompanyAgeYears} yıl)`)
-        : fail(`En az ${r.minCompanyAgeYears} yıllık şirket gerekiyor — sizinki ${p.companyAge} yıl`);
+        : fail(`En az ${r.minCompanyAgeYears} yıllık şirket gerekiyor`, 10);
     }
 
-    /* --- Kurucu yaşı --- */
     if (r.maxFounderAge !== undefined) {
       const age = Number(p.founderAge || 0);
       const ok = age > 0 && age <= r.maxFounderAge;
       ok
-        ? pass(`Kurucu yaşı uygun (≤ ${r.maxFounderAge})`)
-        : fail(`Kurucu ${r.maxFounderAge} yaşını doldurmamış olmalı`);
+        ? pass(`Kurucu yaş sınırı uygun (≤ ${r.maxFounderAge})`)
+        : fail(`Kurucu ${r.maxFounderAge} yaşını doldurmamış olmalı`, 10);
     }
 
-    /* --- Çalışan / ciro --- */
+    /* --- 6. Çalışan ve Ciro Sınırları --- */
     if (r.maxEmployees !== undefined) {
       const ok = Number(p.employees || 0) <= r.maxEmployees;
-      ok ? pass("Çalışan sayısı uygun") : fail(`En fazla ${r.maxEmployees} çalışan`);
+      ok ? pass("Çalışan sayısı limitler dahilinde") : fail(`En fazla ${r.maxEmployees} çalışan`, 10);
     }
     if (r.maxRevenue !== undefined) {
       const ok = Number(p.revenue || 0) <= r.maxRevenue;
-      ok ? pass("Ciro uygun") : fail("Ciro üst sınırı aşılıyor");
+      ok ? pass("Yıllık ciro kriteri uygun") : fail("Ciro üst sınırı aşılıyor", 10);
     }
 
-    /* --- Fon aşaması tavanı --- */
-    if (r.maxFunding) {
-      const mine = FUNDING_ORDER.indexOf(p.funding || "bootstrap");
-      const cap = FUNDING_ORDER.indexOf(r.maxFunding);
-      const ok = mine <= cap;
-      ok
-        ? pass("Yatırım aşaması uygun")
-        : fail("Bu program " + this.labelOf(FUNDING_STAGES, r.maxFunding) + " ve öncesi içindir");
-    }
-
-    /* --- Nitelikler (yumuşak) --- */
+    /* --- 7. Nitelik Uyumu (Yumuşak Şartlar) --- */
     if (r.requiredQuals && r.requiredQuals.length) {
       const missing = r.requiredQuals.filter((q) => !(p.quals || []).includes(q));
-      if (missing.length) softFail = true;
+      if (missing.length) {
+        softFail = true;
+        const missingRatio = missing.length / r.requiredQuals.length;
+        softScore -= Math.round(15 * missingRatio);
+      }
       checks.push({
         ok: missing.length === 0,
         soft: true,
         text:
           missing.length === 0
-            ? "Gerekli nitelikler tamam"
-            : "Eksik: " + missing.map((q) => this.labelOf(QUALIFICATIONS, q)).join(" · "),
+            ? "Tüm zorunlu nitelikler tamamlandı"
+            : "Eksik Nitelik: " + missing.map((q) => this.labelOf(QUALIFICATIONS, q)).join(" · "),
       });
     }
     if (r.anyQuals && r.anyQuals.length) {
       const has = r.anyQuals.some((q) => (p.quals || []).includes(q));
-      if (!has) softFail = true;
+      if (!has) {
+        softFail = true;
+        softScore -= 15;
+      }
       checks.push({
         ok: has,
         soft: true,
         text: has
-          ? "Nitelik şartı sağlanıyor"
-          : "Şunlardan biri gerekli: " + r.anyQuals.map((q) => this.labelOf(QUALIFICATIONS, q)).join(" · "),
+          ? "Alternatif nitelik şartı sağlandı"
+          : "Gerekli niteliklerden en az biri bekleniyor: " + r.anyQuals.map((q) => this.labelOf(QUALIFICATIONS, q)).join(" · "),
       });
     }
 
+    /* --- 8. Sinerji & Hibe Büyüklüğü Puanlaması --- */
+    if (grant.amountMax) {
+      synergyScore += Math.min(10, Math.round((grant.amountMax / 2000000) * 10));
+    }
+    const effortPts = { "Çok düşük": 10, Düşük: 8, Orta: 5, Yüksek: 2, "Çok yüksek": 0 };
+    synergyScore += effortPts[grant.effort] ?? 3;
+    synergyScore = Math.min(20, synergyScore);
+
     const status = hardFail ? "ineligible" : softFail ? "partial" : "eligible";
 
-    /* Puanlama: uygun 60 / yakın 30 taban + tutar (maks 25) + kolaylık (maks 15) */
-    let score = status === "eligible" ? 60 : status === "partial" ? 30 : 0;
-    if (status !== "ineligible") {
-      score += grant.amountMax ? Math.min(25, Math.round((grant.amountMax / 1500000) * 25)) : 12;
-      const effortPts = { "Çok düşük": 15, Düşük: 12, Orta: 7, Yüksek: 3, "Çok yüksek": 1 };
-      score += effortPts[grant.effort] ?? 5;
+    let finalScore = 0;
+    if (status === "eligible") {
+      finalScore = Math.min(100, Math.max(85, hardScore + softScore + synergyScore));
+    } else if (status === "partial") {
+      finalScore = Math.min(84, Math.max(52, hardScore + softScore + Math.round(synergyScore / 2)));
+    } else {
+      finalScore = Math.min(45, Math.max(10, Math.round(hardScore / 2)));
     }
 
-    return { status, score: Math.min(100, score), checks };
+    return { status, score: finalScore, checks };
   },
 
   scanAll(p) {
@@ -544,14 +553,24 @@ function renderGrants() {
     );
   }
   if (cat) rows = rows.filter((r) => r.grant.category === cat);
-  if (elig) rows = rows.filter((r) => r.result.status === elig);
+
+  /* --- Uygunluk Filtresi --- */
+  if (elig === "applicable" || elig === "") {
+    rows = rows.filter((r) => r.result.status === "eligible" || r.result.status === "partial");
+  } else if (elig === "eligible") {
+    rows = rows.filter((r) => r.result.status === "eligible");
+  } else if (elig === "partial") {
+    rows = rows.filter((r) => r.result.status === "partial");
+  } else if (elig === "ineligible") {
+    rows = rows.filter((r) => r.result.status === "ineligible");
+  } // "all" ise tümünü gösterir
 
   const el = document.getElementById("grants-list");
   document.getElementById("grants-count").textContent =
-    `${rows.length} program gösteriliyor (toplam ${GRANTS.length})`;
+    `${rows.length} eşleşen başvurulabilir program gösteriliyor (toplam ${GRANTS.length} program arasından)`;
   el.innerHTML = rows.length
     ? rows.map((r) => grantCard(r.grant, r.result, p)).join("")
-    : `<div class="empty"><h3>Sonuç yok</h3><p>Filtreleri gevşetmeyi deneyin.</p></div>`;
+    : `<div class="empty"><h3>Seçili Proje İçin Uygun Başvuru Bulunamadı</h3><p>Filtreleri gevşetebilir veya "Tüm Programları Göster" seçeneğini kullanabilirsiniz.</p></div>`;
   bindTrackButtons(el);
 }
 

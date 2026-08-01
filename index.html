@@ -246,10 +246,10 @@
         <input type="text" id="q-search" placeholder="🔍 Ara: Yapay Zekâ, TÜBİTAK, OpenAI, Solana, Web3, KDV…" aria-label="Ara" />
         <select id="q-category" aria-label="Kategori"><option value="">Tüm kategoriler</option></select>
         <select id="q-eligibility" aria-label="Uygunluk">
-          <option value="">Tüm durumlar</option>
-          <option value="eligible">🟢 Sadece uygun olduklarım</option>
-          <option value="partial">🟡 Yakın olduklarım (Küçük eksik)</option>
-          <option value="ineligible">🔴 Uygun olmadıklarım</option>
+          <option value="applicable" selected>✨ Başvurabileceğim Tüm Programlar (Uygun + Yakın)</option>
+          <option value="eligible">🟢 Sadece Tam Uygun Olduklarım</option>
+          <option value="partial">🟡 Yakın Olduklarım (Eksik Nitelikli)</option>
+          <option value="all">🌐 Tüm Programları Göster (Uygun Olmayanlar Dahil)</option>
         </select>
         <button type="button" class="btn secondary sm" id="btn-reset-filters">Filtreleri Sıfırla</button>
       </div>
