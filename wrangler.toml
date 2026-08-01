@@ -1,0 +1,7 @@
+name = "grant-radar"
+compatibility_date = "2026-01-01"
+
+# Statik site: giriş noktası (worker script) yok, sadece dosyalar servis edilir.
+[assets]
+directory = "."
+not_found_handling = "404-page"

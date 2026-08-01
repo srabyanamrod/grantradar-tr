@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grant Radar — Türkiye Teşvik Bulucu</title>
+  <meta name="description" content="Türkiye devlet desteklerini ve teşviklerini proje profilinize göre eşleştiren kişisel radar. KOSGEB, TÜBİTAK, Ticaret Bakanlığı, vergi avantajları." />
+  <meta name="color-scheme" content="dark" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%234ade80'/></svg>" />
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="logo"><span class="dot"></span> Grant Radar</div>
+    <div class="logo-sub">Türkiye Teşvik Bulucu</div>
+
+    <nav class="nav">
+      <button type="button" class="nav-item active" data-tab="panel">📡 Panel</button>
+      <button type="button" class="nav-item" data-tab="profil">👤 Proje Profili</button>
+      <button type="button" class="nav-item" data-tab="tesvikler">🎯 Programlar <span class="badge" id="badge-eligible">0</span></button>
+      <button type="button" class="nav-item" data-tab="basvurular">📋 Başvurular <span class="badge" id="badge-tracked">0</span></button>
+      <button type="button" class="nav-item" data-tab="kaynaklar">📚 Kaynaklar</button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="profile-switcher">
+        <label for="profile-select">Aktif Proje</label>
+        <select id="profile-select"></select>
+        <div class="btn-row" style="margin-top:8px">
+          <button type="button" class="btn sm" id="btn-new-profile">+ Yeni</button>
+          <button type="button" class="btn secondary sm" id="btn-rename-profile">Adı</button>
+          <button type="button" class="btn secondary sm" id="btn-delete-profile">Sil</button>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--text-faint);line-height:1.45">
+        💾 Veriler yalnızca bu tarayıcıda saklanır. Sunucuya gitmez.
+      </p>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+
+    <!-- ---------- PANEL ---------- -->
+    <section id="tab-panel" class="tab-panel">
+      <div class="page-head">
+        <h1 id="panel-title">Panel</h1>
+        <p>Aktif projenizin teşvik durumu. Profili doldurdukça sonuçlar keskinleşir.</p>
+      </div>
+
+      <div class="notice">
+        <strong>Doğrulama şart:</strong> Buradaki tutar ve şartlar 2026 ortası derlemesidir. Başvurudan önce her programın resmi sayfasından teyit edin.
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat ok"><div class="num" id="stat-eligible">0</div><div class="lbl">Uygun program</div></div>
+        <div class="stat warn"><div class="num" id="stat-partial">0</div><div class="lbl">Yakın (eksik nitelik)</div></div>
+        <div class="stat info"><div class="num" id="stat-tracked">0</div><div class="lbl">Takipte</div></div>
+        <div class="stat"><div class="num" id="stat-potential">—</div><div class="lbl">Tutarı bilinen hibe potansiyeli</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Sıradaki en iyi 3 fırsat</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+          Uygunluk × tutar × başvuru kolaylığı sıralamasına göre.
+        </p>
+        <div id="panel-top"></div>
+      </div>
+
+      <div class="card">
+        <h2>Profilinizi güçlendirin</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">
+          Aşağıdaki adımları tamamlarsanız şu kadar ek teşvik açılır:
+        </p>
+        <div id="panel-unlocks"></div>
+      </div>
+    </section>
+
+    <!-- ---------- PROFİL ---------- -->
+    <section id="tab-profil" class="tab-panel hidden">
+      <div class="page-head">
+        <h1>Proje Profili</h1>
+        <p>Her proje için ayrı profil oluşturun. Sol alttaki seçiciden projeler arasında geçiş yapabilirsiniz.</p>
+      </div>
+
+      <div class="card">
+        <h2>Temel bilgiler</h2>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-name">Proje / işletme adı</label>
+            <input type="text" id="f-name" placeholder="ör. Dormanreview Advisory" />
+          </div>
+          <div class="field">
+            <label for="f-country">Nerede kayıtlısınız?</label>
+            <select id="f-country"></select>
+            <div class="hint">Türkiye dışı programlar için önemli.</div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-companyType">Şirket türü</label>
+            <select id="f-companyType"></select>
+          </div>
+          <div class="field">
+            <label for="f-stage">Olgunluk aşaması</label>
+            <select id="f-stage"></select>
+            <div class="hint">Hızlandırıcılar bunu esas alır.</div>
+          </div>
+        </div>
+        <div class="grid-3">
+          <div class="field">
+            <label for="f-companyAge">Şirket yaşı (yıl)</label>
+            <input type="number" id="f-companyAge" min="0" max="50" placeholder="0" />
+            <div class="hint">Henüz kurmadıysanız 0.</div>
+          </div>
+          <div class="field">
+            <label for="f-employees">Çalışan sayısı</label>
+            <input type="number" id="f-employees" min="0" max="10000" placeholder="1" />
+          </div>
+          <div class="field">
+            <label for="f-revenue">Yıllık ciro (TL)</label>
+            <input type="number" id="f-revenue" min="0" placeholder="0" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-founderAge">Kurucu yaşı</label>
+            <input type="number" id="f-founderAge" min="15" max="99" placeholder="30" />
+            <div class="hint">29 ve altı bazı teşvikleri açar.</div>
+          </div>
+          <div class="field">
+            <label for="f-funding">Yatırım durumu</label>
+            <select id="f-funding"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Sektörler</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+          Birden fazla seçebilirsiniz. Hiçbirini seçmezseniz sektör filtresi uygulanmaz.
+        </p>
+        <div class="checks" id="f-sectors"></div>
+      </div>
+
+      <div class="card">
+        <h2>Nitelikler</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">
+          Sahip olduklarınızı işaretleyin. Her işaret yeni programlar açar.
+        </p>
+        <div id="f-quals"></div>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn" id="btn-save-profile">Kaydet ve Tara</button>
+        <span id="save-msg" style="align-self:center;font-size:13px;color:var(--accent)"></span>
+      </div>
+    </section>
+
+    <!-- ---------- TEŞVİKLER ---------- -->
+    <section id="tab-tesvikler" class="tab-panel hidden">
+      <div class="page-head">
+        <h1>Programlar</h1>
+        <p>Devlet destekleri, hızlandırıcılar, kurumsal programlar, Web3 ekosistem grantları, bulut kredileri ve ödüller — profilinize göre puanlanmış. Yeşil = uygunsunuz, sarı = küçük bir eksik var, kırmızı = şu an uygun değil.</p>
+      </div>
+
+      <div class="filters">
+        <input type="text" id="q-search" placeholder="Ara: KDV, ihracat, Web3, ödül…" aria-label="Ara" />
+        <select id="q-category" aria-label="Kategori"><option value="">Tüm kategoriler</option></select>
+        <select id="q-eligibility" aria-label="Uygunluk">
+          <option value="">Tüm durumlar</option>
+          <option value="eligible">Sadece uygun olduklarım</option>
+          <option value="partial">Yakın olduklarım</option>
+          <option value="ineligible">Uygun olmadıklarım</option>
+        </select>
+        <button type="button" class="btn secondary sm" id="btn-reset-filters">Sıfırla</button>
+      </div>
+
+      <p id="grants-count" style="font-size:12.5px;color:var(--text-faint);margin-bottom:12px"></p>
+      <div id="grants-list"></div>
+    </section>
+
+    <!-- ---------- BAŞVURULAR ---------- -->
+    <section id="tab-basvurular" class="tab-panel hidden">
+      <div class="page-head">
+        <h1>Başvuru Takibi</h1>
+        <p>Takibe aldığınız programların durumunu ve notlarını buradan yönetin.</p>
+      </div>
+      <div id="tracker-list"></div>
+    </section>
+
+    <!-- ---------- KAYNAKLAR ---------- -->
+    <section id="tab-kaynaklar" class="tab-panel hidden">
+      <div class="page-head">
+        <h1>Kaynaklar</h1>
+        <p>Her başvurudan önce teyit etmeniz gereken resmi kurumlar.</p>
+      </div>
+
+      <div id="resources-list"></div>
+
+      <div class="card">
+        <h2>Cihazlar arası senkron</h2>
+        <p style="font-size:13.5px;color:var(--text-dim);margin-bottom:18px;max-width:66ch">
+          Varsayılan olarak <strong>kapalıdır</strong> ve veriniz yalnızca bu tarayıcıda durur.
+          Telefondan da erişmek veya bir projeyi paylaşmak isterseniz kendi Supabase projenizi
+          bağlayabilirsiniz. Kurulum için <code>supabase-schema.sql</code> dosyasını Supabase
+          SQL Editor'da çalıştırın.
+        </p>
+
+        <div id="sync-state" class="sync-status"></div>
+
+        <div id="sync-setup">
+          <div class="grid-2">
+            <div class="field">
+              <label for="sync-url">Project URL</label>
+              <input type="text" id="sync-url" placeholder="https://xxxx.supabase.co" />
+            </div>
+            <div class="field">
+              <label for="sync-key">anon public anahtarı</label>
+              <input type="text" id="sync-key" placeholder="eyJhbGciOi…" />
+              <div class="hint">service_role anahtarını buraya <strong>girmeyin</strong>.</div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn sm" id="btn-sync-save">Bağlantıyı kaydet</button>
+            <button type="button" class="btn secondary sm" id="btn-sync-off">Senkronu kapat</button>
+          </div>
+        </div>
+
+        <div id="sync-auth" class="hidden" style="margin-top:18px">
+          <div class="field" style="max-width:340px">
+            <label for="sync-email">E-posta ile giriş</label>
+            <input type="email" id="sync-email" placeholder="ornek@eposta.com" />
+            <div class="hint">Şifre yok — e-postanıza giriş bağlantısı gönderilir.</div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn sm" id="btn-sync-link">Giriş bağlantısı gönder</button>
+          </div>
+        </div>
+
+        <div id="sync-actions" class="hidden" style="margin-top:18px">
+          <div class="btn-row">
+            <button type="button" class="btn sm" id="btn-sync-push">Buluta yaz</button>
+            <button type="button" class="btn secondary sm" id="btn-sync-pull">Buluttan çek</button>
+            <button type="button" class="btn secondary sm" id="btn-sync-out">Çıkış yap</button>
+          </div>
+        </div>
+
+        <p style="font-size:12.5px;color:var(--text-faint);margin-top:16px;max-width:66ch">
+          Senkron açıkken verileriniz Supabase sunucularında saklanır; bu sunucular yurt dışında
+          bulunabilir.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>Veri yönetimi</h2>
+        <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px">
+          Tüm profilleriniz ve başvuru kayıtlarınız yalnızca bu tarayıcıda tutulur. Yedek almak veya başka bir cihaza taşımak için dışa aktarın.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="btn secondary sm" id="btn-export">⬇ JSON olarak dışa aktar</button>
+          <button type="button" class="btn secondary sm" id="btn-import">⬆ JSON içe aktar</button>
+          <button type="button" class="btn danger sm" id="btn-wipe">🗑 Tüm verileri sil</button>
+        </div>
+        <input type="file" id="file-import" accept="application/json" class="hidden" />
+      </div>
+
+      <div class="card">
+        <h2>Sorumluluk reddi</h2>
+        <p style="font-size:13px;color:var(--text-dim)">
+          Grant Radar bir bilgilendirme aracıdır; mali müşavirlik, hukuki danışmanlık veya resmi başvuru hizmeti değildir.
+          Program tutarları ve şartları ilgili kurumlar tarafından değiştirilebilir. Nihai kararlarınızdan önce bir SMMM ile görüşün.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="sync.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
