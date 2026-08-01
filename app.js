@@ -22,6 +22,73 @@ const STORE_KEY_V1 = "grantradar.v1";
 
 const STATE = { activeId: null, profiles: [] };
 
+/* ============================================================
+   DİL DESTEĞİ & i18n MİMARİSİ
+   ============================================================ */
+let currentLang = "tr";
+
+const I18N_DICT = {
+  "Şirket Kurulum Paneli": "Company Formation Panel",
+  "Tüm yasal süreçlerinizi şeffaf, oyunlaştırılmış ve tek merkezden akıcı bir şekilde yönetin.": "Manage all legal processes transparently and smoothly from a single center.",
+  "Kurulum Öncesi": "Pre-Formation",
+  "Şirket türü, unvan": "Company type, title",
+  "Kurulum Süreci": "Formation Process",
+  "Tescil & Vergi dairesi": "Registration & Tax Office",
+  "Kurulum Sonrası": "Post-Formation",
+  "E-fatura & Mali takvim": "E-invoice & Financial calendar",
+  "Hazırlık Adımları": "Preparation Steps",
+  "Aşama 1/3": "Stage 1/3",
+  "Canlı Eşleştirme Motoru": "Live Matching Engine",
+  "Destek Ekibiyle Görüş": "Talk to Support",
+  "🏢 Şirket Kurulumu": "🏢 Formation",
+  "📡 Radar Paneli": "📡 Radar Panel",
+  "👤 Proje Profili": "👤 Project Profile",
+  "🎯 Programlar": "🎯 Programs",
+  "📋 Başvurular": "📋 Applications",
+  "📚 Kaynaklar": "📚 Resources",
+  "⚡ Kaydet ve Tara": "⚡ Save & Scan",
+  "Genel Uyum Analizi": "Overall Compliance Analysis",
+  "Sıradaki En İyi 3 Fırsat": "Top 3 Upcoming Opportunities",
+  "Profilinizi Güçlendirin": "Strengthen Your Profile",
+  "Temel Bilgiler": "Basic Information",
+  "Faaliyet Gösterilen Sektörler": "Active Sectors",
+  "Teknik ve Kurumsal Nitelikler": "Technical & Corporate Qualifications",
+  "Programlar & Hibeler": "Programs & Grants",
+  "Başvuru Takibi": "Application Tracking",
+  "Cihazlar Arası Senkronizasyon (Supabase)": "Cross-Device Sync (Supabase)",
+  "Veri Yönetimi & Yedekleme": "Data Management & Backup"
+};
+
+function translateDOM() {
+  const isEn = currentLang === "en";
+  document.querySelectorAll(".lang-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.lang === currentLang);
+  });
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  let n;
+  while(n = walker.nextNode()) {
+    if(n.parentElement && ["SCRIPT","STYLE"].includes(n.parentElement.tagName)) continue;
+    let txt = n.nodeValue.trim();
+    if(!txt) continue;
+
+    if (isEn && I18N_DICT[txt]) {
+      n.originalText = txt;
+      n.nodeValue = n.nodeValue.replace(txt, I18N_DICT[txt]);
+    } else if (!isEn && n.originalText) {
+      n.nodeValue = n.nodeValue.replace(txt, n.originalText);
+    }
+  }
+}
+
+document.querySelectorAll(".lang-btn").forEach(b => {
+  b.addEventListener("click", (e) => {
+    currentLang = e.target.dataset.lang;
+    translateDOM();
+  });
+});
+
+
 function blankProfile(name) {
   return {
     id: "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -363,20 +430,32 @@ function renderProfileForm() {
 }
 
 function readProfileForm() {
-  const p = active();
-  p.name = document.getElementById("f-name").value.trim() || "Adsız Proje";
-  p.companyType = document.getElementById("f-companyType").value;
-  p.country = document.getElementById("f-country").value;
-  p.companyAge = Number(document.getElementById("f-companyAge").value) || 0;
-  p.employees = Number(document.getElementById("f-employees").value) || 0;
-  p.revenue = Number(document.getElementById("f-revenue").value) || 0;
-  const fa = document.getElementById("f-founderAge").value;
-  p.founderAge = fa === "" ? null : Number(fa);
-  p.stage = document.getElementById("f-stage").value;
-  p.funding = document.getElementById("f-funding").value;
-  p.sectors = Array.from(document.querySelectorAll("#f-sectors input:checked")).map((i) => i.value);
-  p.quals = Array.from(document.querySelectorAll("#f-quals input:checked")).map((i) => i.value);
-  save();
+  try {
+    const p = active();
+    if (!p) throw new Error("Aktif profil bulunamadı.");
+
+    p.name = document.getElementById("f-name")?.value?.trim() || "Adsız Proje";
+    p.companyType = document.getElementById("f-companyType")?.value || "";
+    p.country = document.getElementById("f-country")?.value || "tr";
+    p.companyAge = Number(document.getElementById("f-companyAge")?.value) || 0;
+    p.employees = Number(document.getElementById("f-employees")?.value) || 0;
+    p.revenue = Number(document.getElementById("f-revenue")?.value) || 0;
+    const fa = document.getElementById("f-founderAge")?.value;
+    p.founderAge = fa === "" ? null : Number(fa);
+    p.stage = document.getElementById("f-stage")?.value || "";
+    p.funding = document.getElementById("f-funding")?.value || "bootstrap";
+
+    const sectorsEl = document.querySelectorAll("#f-sectors input:checked");
+    if (sectorsEl) p.sectors = Array.from(sectorsEl).map((i) => i.value);
+
+    const qualsEl = document.querySelectorAll("#f-quals input:checked");
+    if (qualsEl) p.quals = Array.from(qualsEl).map((i) => i.value);
+
+    save();
+  } catch (err) {
+    console.error("Form okunurken hata oluştu:", err);
+    alert("Form okunurken bir hata oluştu. Lütfen eksik alanları kontrol edin. Hata: " + err.message);
+  }
 }
 
 /* ============================================================
@@ -641,32 +720,40 @@ function renderTracker() {
 }
 
 const RESOURCES = [
-  { n: "KOSGEB", u: "https://www.kosgeb.gov.tr", d: "Girişimcilik, İş Kurma, KOBİGEL, İşletme Geliştirme destekleri." },
-  { n: "TÜBİTAK", u: "https://tubitak.gov.tr", d: "BiGG (1512), KOBİ Ar-Ge (1507), Sanayi Ar-Ge (1501)." },
-  { n: "Ticaret Bakanlığı", u: "https://ticaret.gov.tr/destekler", d: "İhracat, HİSER, E-Turquality, TURQUALITY®." },
-  { n: "Kolay Destek", u: "https://kolaydestek.gov.tr", d: "Devlet desteklerinin tek noktadan arama platformu." },
-  { n: "Gelir İdaresi Başkanlığı", u: "https://www.gib.gov.tr", d: "Hizmet ihracatı ve KDV istisnaları, genç girişimci muafiyeti." },
-  { n: "TÜRKPATENT", u: "https://www.turkpatent.gov.tr", d: "Marka tescili ve benzerlik araştırması." },
-  { n: "Ufuk Avrupa (Horizon)", u: "https://ufuk.tubitak.gov.tr", d: "AB araştırma ve inovasyon fonları, ulusal koordinasyon." },
-  { n: "EIC (Avrupa Inovasyon Konseyi)", u: "https://eic.ec.europa.eu", d: "EIC Accelerator hibe + yatırım programı." },
-  { n: "Eureka / Eurostars", u: "https://www.eurekanetwork.org", d: "Uluslararası ortaklı KOBİ Ar-Ge fonu." },
-  { n: "KVKK", u: "https://www.kvkk.gov.tr", d: "Aydınlatma yükümlülüğü, VERBİS ve veri güvenliği rehberleri." },
-  { n: "GrantChain — Eşleştirme", u: "https://www.grantchain.eu/match", d: "5 soruyla Web3/AI/iklim hibelerine eşleştirme yapan ücretsiz dizin." },
-  { n: "0xLabs — Grant Providers", u: "https://www.0xlabs.tech/grant-providers", d: "Blokzincir vakıflarının hibe programları, tutar bilgisiyle." },
-  { n: "Superteam Earn", u: "https://superteam.fun/earn", d: "Solana ekosisteminde bounty, proje ve bölgesel hibeler (Türkiye dahil)." },
-  { n: "NEAR Funding Hub", u: "https://www.near.org/funding", d: "NEAR ekosistemindeki tüm fon kanalları tek sayfada." },
-  { n: "Top 100 Web3 Grants", u: "https://app.folk.app/shared/Top-100-Web3-Grants-sI1rSi46Slu8RcGDhEtE80OrsfFmiGsp", d: "Topluluk tarafından derlenen kapsamlı Web3 hibe listesi." },
+  { n: "KOSGEB", u: "https://www.kosgeb.gov.tr", d: "Girişimcilik, İş Kurma, KOBİGEL, İşletme Geliştirme destekleri.", cat: "Devlet", score: 95 },
+  { n: "TÜBİTAK", u: "https://tubitak.gov.tr", d: "BiGG (1512), KOBİ Ar-Ge (1507), Sanayi Ar-Ge (1501).", cat: "Devlet", score: 98 },
+  { n: "Ticaret Bakanlığı", u: "https://ticaret.gov.tr/destekler", d: "İhracat, HİSER, E-Turquality, TURQUALITY®.", cat: "Devlet", score: 85 },
+  { n: "Ufuk Avrupa (Horizon)", u: "https://ufuk.tubitak.gov.tr", d: "AB araştırma ve inovasyon fonları, ulusal koordinasyon.", cat: "AB", score: 80 },
+  { n: "EIC (Avrupa Inovasyon Konseyi)", u: "https://eic.ec.europa.eu", d: "EIC Accelerator hibe + yatırım programı.", cat: "AB", score: 88 },
+  { n: "GrantChain — Eşleştirme", u: "https://www.grantchain.eu/match", d: "5 soruyla Web3/AI/iklim hibelerine eşleştirme yapan ücretsiz dizin.", cat: "Web3", score: 92 },
+  { n: "0xLabs — Grant Providers", u: "https://www.0xlabs.tech/grant-providers", d: "Blokzincir vakıflarının hibe programları, tutar bilgisiyle.", cat: "Web3", score: 90 },
+  { n: "Superteam Earn", u: "https://superteam.fun/earn", d: "Solana ekosisteminde bounty, proje ve bölgesel hibeler (Türkiye dahil).", cat: "Web3", score: 89 },
+  { n: "Kolay Destek", u: "https://kolaydestek.gov.tr", d: "Devlet desteklerinin tek noktadan arama platformu.", cat: "Araçlar", score: 75 }
 ];
 
 function renderResources() {
-  document.getElementById("resources-list").innerHTML = RESOURCES.map(
-    (r) => `
-    <div class="res-item">
-      <h3>${esc(r.n)}</h3>
-      <p>${esc(r.d)}</p>
-      <a href="${esc(r.u)}" target="_blank" rel="noopener">${esc(r.u)} ↗</a>
-    </div>`
-  ).join("");
+  const el = document.getElementById("resources-list");
+  if(!el) return;
+  const q = (document.getElementById("q-res-search")?.value || "").trim().toLowerCase();
+  const cat = document.getElementById("q-res-cat")?.value || "";
+
+  let list = RESOURCES;
+  if(q) list = list.filter(r => (r.n + " " + r.d).toLowerCase().includes(q));
+  if(cat) list = list.filter(r => r.cat === cat);
+
+  el.innerHTML = list.length ? list.map((r, idx) => `
+    <div class="ai-insight-card hover-float delay-${(idx%3)+1}">
+      <h3 style="font-size:18px">${esc(r.n)}</h3>
+      <p style="margin-bottom:12px;font-size:13.5px">${esc(r.d)}</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto">
+        <span class="tag hibe">${esc(r.cat)}</span>
+        <a href="${esc(r.u)}" class="arrow" target="_blank" rel="noopener">Kurum Sitesi</a>
+      </div>
+      <div style="position:absolute;top:16px;right:16px;font-size:11px;font-weight:700;color:var(--accent)">
+        Erişim Skoru: ${r.score}
+      </div>
+    </div>
+  `).join("") : `<div class="empty col-8"><h3>Sonuç bulunamadı</h3></div>`;
 }
 
 /* ============================================================
@@ -681,6 +768,43 @@ function toggleTrack(grantId) {
   renderAll();
 }
 
+const KURULUM_DATA = {
+  pre: [
+    { title: "Şirket Türü Seçimi", desc: "Şahıs, Limited (LTD) veya Anonim (AŞ) şirketi artı ve eksileriyle değerlendirin.", done: true },
+    { title: "Unvan ve NACE Kodu", desc: "MERSİS üzerinden kullanılabilir bir unvan sorgulayın ve faaliyet alanınıza uygun NACE kodunu seçin.", done: false }
+  ],
+  during: [
+    { title: "Mali Müşavir Ataması", desc: "e-Devlet üzerinden bir SMMM sözleşmesi yapın.", done: false },
+    { title: "Ticaret Sicil Tescili", desc: "İlgili odalarda tescil işlemlerini tamamlayın.", done: false }
+  ],
+  post: [
+    { title: "Vergi Levhası ve e-Fatura", desc: "Vergi dairenizden yoklama memuru onayını alın ve e-Dönüşüm sürecini başlatın.", done: false },
+    { title: "Banka Hesapları", desc: "Kurumsal hesaplarınızı açarak sermaye blokesini çözün.", done: false }
+  ]
+};
+
+function renderKurulum(tab = "pre") {
+  const container = document.getElementById("k-tasks");
+  if(!container) return;
+  const tasks = KURULUM_DATA[tab] || [];
+  
+  document.querySelectorAll(".k-nav-btn").forEach(b => b.classList.toggle("active", b.dataset.kTab === tab));
+  
+  const stageNames = { pre: "Aşama 1/3 (Öncesi)", during: "Aşama 2/3 (Süreci)", post: "Aşama 3/3 (Sonrası)" };
+  document.getElementById("k-step-badge").textContent = stageNames[tab];
+  
+  container.innerHTML = tasks.map((t, idx) => `
+    <div class="k-task ${t.done ? "done" : ""} fade-in delay-${idx+1}">
+      <div class="t-status">${t.done ? "✓" : "○"}</div>
+      <div class="t-content">
+        <h4>${esc(t.title)}</h4>
+        <p>${esc(t.desc)}</p>
+      </div>
+      ${!t.done ? `<button class="btn sm secondary" style="margin-left:auto;align-self:center" onclick="alert('Bu adım Profil ekranından tamamlanabilir.')">Tamamla</button>` : ""}
+    </div>
+  `).join("");
+}
+
 function renderProfileSelect() {
   document.getElementById("profile-select").innerHTML = STATE.profiles
     .map((p) => `<option value="${p.id}" ${p.id === STATE.activeId ? "selected" : ""}>${esc(p.name)}</option>`)
@@ -693,7 +817,9 @@ function renderAll() {
   renderPanel();
   renderGrants();
   renderTracker();
+  renderResources();
   renderSync();
+  setTimeout(translateDOM, 50); // DOM renderlandıktan hemen sonra çevir
 }
 
 /* ============================================================
@@ -902,9 +1028,17 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   ["q-search", "q-category", "q-eligibility"].forEach((id) =>
-    document.getElementById(id).addEventListener("input", renderGrants)
+    document.getElementById(id)?.addEventListener("input", renderGrants)
   );
-  document.getElementById("btn-reset-filters").addEventListener("click", () => {
+  ["q-res-search", "q-res-cat"].forEach((id) =>
+    document.getElementById(id)?.addEventListener("input", renderResources)
+  );
+
+  document.querySelectorAll(".k-nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => renderKurulum(btn.dataset.kTab));
+  });
+  
+  document.getElementById("btn-reset-filters")?.addEventListener("click", () => {
     document.getElementById("q-search").value = "";
     document.getElementById("q-category").value = "";
     document.getElementById("q-eligibility").value = "";
@@ -952,6 +1086,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   renderResources();
+  renderKurulum();
   wireSync();
   renderAll();
 });
