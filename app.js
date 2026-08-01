@@ -482,71 +482,111 @@ function renderPanel() {
   const eligible = rows.filter((r) => r.result.status === "eligible");
   const partial = rows.filter((r) => r.result.status === "partial");
   const total = rows.length;
-  const trackedCount = Object.keys(p.tracked).length;
+  const trackedCount = Object.keys(p.tracked || {}).length;
 
-  document.getElementById("panel-title").textContent = p.name + ".";
+  const titleEl = document.getElementById("panel-title");
+  if (titleEl) titleEl.textContent = p.name;
+
+  const statEligible = document.getElementById("stat-eligible");
+  if (statEligible) statEligible.textContent = eligible.length;
+
+  const statPartial = document.getElementById("stat-partial");
+  if (statPartial) statPartial.textContent = partial.length;
+
+  const statTracked = document.getElementById("stat-tracked");
+  if (statTracked) statTracked.textContent = trackedCount;
+
+  let potentialTL = 0;
+  eligible.forEach((r) => {
+    if (r.grant.amountMax) {
+      let amt = r.grant.amountMax;
+      const lbl = (r.grant.amountLabel || "").toUpperCase();
+      if (lbl.includes("EUR") || lbl.includes("€")) amt *= 38;
+      else if (lbl.includes("USD") || lbl.includes("$")) amt *= 35;
+      potentialTL += amt;
+    }
+  });
+
+  const statPotential = document.getElementById("stat-potential");
+  if (statPotential) {
+    statPotential.textContent = potentialTL > 0 ? fmtTL(potentialTL) : "Esnek / Hibe";
+  }
+
+  const badgeEligible = document.getElementById("badge-eligible");
+  if (badgeEligible) badgeEligible.textContent = eligible.length;
+
+  const badgeTracked = document.getElementById("badge-tracked");
+  if (badgeTracked) badgeTracked.textContent = trackedCount;
 
   /* --- Ölçüm şeridi: oranları toplam program sayısına göre --- */
-  const pct = (n) => Math.round((n / total) * 100);
+  const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
   const meters = [
     { cls: "ok", label: "Uygun", val: eligible.length, w: pct(eligible.length) },
     { cls: "warn", label: "Yakın", val: partial.length, w: pct(partial.length) },
     { cls: "info", label: "Takipte", val: trackedCount, w: pct(trackedCount) },
     { cls: "", label: "Uygun değil", val: total - eligible.length - partial.length, w: pct(total - eligible.length - partial.length) },
   ];
-  document.getElementById("panel-meters").innerHTML = meters
-    .map(
-      (m) => `
-    <div class="meter ${m.cls}">
-      <div class="m-label">${m.label}</div>
-      <div class="m-track"><div class="m-fill" style="width:${Math.max(m.w, 1)}%"></div></div>
-      <div class="m-val">${m.val}</div>
-    </div>`
-    )
-    .join("");
+
+  const metersEl = document.getElementById("panel-meters");
+  if (metersEl) {
+    metersEl.innerHTML = meters
+      .map(
+        (m) => `
+      <div class="meter ${m.cls}">
+        <div class="m-label">${esc(m.label)}</div>
+        <div class="m-track"><div class="m-fill" style="width:${Math.max(m.w, 1)}%"></div></div>
+        <div class="m-val">${m.val} (%${m.w})</div>
+      </div>`
+      )
+      .join("");
+  }
 
   /* --- Büyük istatistik --- */
-  document.getElementById("panel-bigstat").innerHTML = `
-    <div class="bigstat">
-      <span class="n">${eligible.length}</span>
-      <span class="of">/ ${total} program</span>
-    </div>
-    <p class="bigstat-note">
-      ${total} programdan ${eligible.length} tanesine bugün başvurabilirsiniz.
-      ${partial.length} tanesi için ise yalnızca kapatabileceğiniz bir eksik var.
-    </p>`;
-
-  document.getElementById("badge-eligible").textContent = eligible.length;
-  document.getElementById("badge-tracked").textContent = trackedCount;
+  const bigstatEl = document.getElementById("panel-bigstat");
+  if (bigstatEl) {
+    bigstatEl.innerHTML = `
+      <div class="bigstat">
+        <span class="n">${eligible.length}</span>
+        <span class="of">/ ${total} program</span>
+      </div>
+      <p class="bigstat-note">
+        Toplam ${total} programdan <strong>${eligible.length} tanesine</strong> doğrudan uygunsunuz.
+        ${partial.length} tanesi için ise yalnızca profilinizde kapatabileceğiniz bir eksik nitelik var.
+      </p>`;
+  }
 
   /* --- En iyi 3 fırsat --- */
   const top = document.getElementById("panel-top");
-  const best = rows.filter((r) => r.result.status !== "ineligible").slice(0, 3);
-  top.innerHTML = best.length
-    ? best.map((r) => grantCard(r.grant, r.result, p)).join("")
-    : `<div class="empty"><h3>Henüz eşleşme yok</h3><p>Proje Profili sekmesinden bilgilerinizi doldurun.</p></div>`;
-  bindTrackButtons(top);
+  if (top) {
+    const best = rows.filter((r) => r.result.status !== "ineligible").slice(0, 3);
+    top.innerHTML = best.length
+      ? best.map((r) => grantCard(r.grant, r.result, p)).join("")
+      : `<div class="empty"><h3>Henüz eşleşme yok</h3><p>Proje Profili sekmesinden bilgilerinizi doldurun.</p></div>`;
+    bindTrackButtons(top);
+  }
 
   /* --- Bugün → Sonra dönüşüm tablosu --- */
   const unlocks = engine.unlockAnalysis(p);
   const el = document.getElementById("panel-unlocks");
-  if (!unlocks.length) {
-    el.innerHTML = `<p style="font-size:14px;color:var(--text-faint)">Kapatılabilir bir eksiğiniz görünmüyor.</p>`;
-    return;
+  if (el) {
+    if (!unlocks.length) {
+      el.innerHTML = `<p style="font-size:14px;color:var(--text-faint)">Kapatılabilir bir eksiğiniz görünmüyor.</p>`;
+    } else {
+      el.innerHTML =
+        `<div class="transform-head"><div class="a">Eksik Nitelik</div><div class="b">Kazandıracağı Yeni Programlar</div><div style="min-width:46px"></div></div>` +
+        unlocks
+          .slice(0, 8)
+          .map(
+            (u) => `
+          <div class="transform">
+            <div class="from">${esc(engine.labelOf(QUALIFICATIONS, u.qual))} yok</div>
+            <div class="to">${esc(u.grants.length)} yeni program kilidi açılır</div>
+            <div class="gain">+${u.grants.length}</div>
+          </div>`
+          )
+          .join("");
+    }
   }
-  el.innerHTML =
-    `<div class="transform-head"><div class="a">Bugün</div><div class="b">Sonra</div><div style="min-width:46px"></div></div>` +
-    unlocks
-      .slice(0, 8)
-      .map(
-        (u) => `
-      <div class="transform">
-        <div class="from">${esc(engine.labelOf(QUALIFICATIONS, u.qual))} yok</div>
-        <div class="to">${esc(u.grants.length)} program açılır</div>
-        <div class="gain">+${u.grants.length}</div>
-      </div>`
-      )
-      .join("");
 }
 
 function renderTracker() {
@@ -853,8 +893,11 @@ document.addEventListener("DOMContentLoaded", () => {
     readProfileForm();
     renderAll();
     const msg = document.getElementById("save-msg");
-    msg.textContent = "Kaydedildi ✓";
-    setTimeout(() => (msg.textContent = ""), 2200);
+    if (msg) {
+      msg.textContent = "✓ Profil Kaydedildi & Programlar Tarandı!";
+      msg.style.opacity = "1";
+      setTimeout(() => { msg.style.opacity = "0"; }, 2500);
+    }
     switchTab("tesvikler");
   });
 
